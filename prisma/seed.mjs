@@ -1,0 +1,405 @@
+import { PrismaClient } from "@prisma/client"
+import bcrypt from "bcryptjs"
+
+const prisma = new PrismaClient()
+
+const categories = [
+  { id: "1", name: "بروتين", slug: "protein", image: "/images/products/whey-gold-standard.jpg" },
+  { id: "2", name: "كرياتين", slug: "creatine", image: "/images/products/creatine-300.jpg" },
+  { id: "3", name: "ما قبل التمرين", slug: "pre-workout", image: "/images/products/product-preworkout-front.avif" },
+  { id: "4", name: "فيتامينات", slug: "vitamins", image: "/images/products/product-omega3-bottle.jpg" },
+  { id: "5", name: "حوارق دهون", slug: "fat-burner", image: "/images/products/l-carnitine.jpg" },
+  { id: "6", name: "إكسسوارات", slug: "accessories", image: "/images/accessories/metal-shaker-01.png" },
+]
+
+const products = [
+  {
+    id: "1",
+    name: "Whey Protein Gold Standard",
+    slug: "whey-gold-standard",
+    description: "أفضل بروتين لبناء العضلات، 24g بروتين لكل جرعة، سريع الامتصاص. مثالي بعد التمرين مباشرة.",
+    shortDesc: "24g بروتين - 5.5g BCAA",
+    goal: "MUSCLE_GAIN",
+    brand: "Optimum Nutrition",
+    images: ["/images/products/whey-gold-standard.jpg", "/images/products/product-whey-gold-scoop.jpg"],
+    isFeatured: true,
+    isSubscription: true,
+    subscriptionDiscount: 15,
+    rating: 4.8,
+    reviewCount: 234,
+    categorySlug: "protein",
+    nutrition: { servingSize: "30g", servings: "33", calories: 120, protein: "24g", carbs: "3g", fat: "1g", sugar: "1g" },
+    ingredients: "Whey Protein Isolate, Whey Concentrate, Cocoa, Lecithin, Natural Flavors",
+    usage: "امزج سكوب واحد (30g) مع 200ml ماء أو حليب بعد التمرين مباشرة.",
+    variants: [
+      { id: "1-1", name: "شوكولاتة - 1kg", sku: "WHEY-CH-1", price: 14900, compareAtPrice: 17000, stock: 12, attributes: { flavor: "شوكولاتة", size: "1kg" }, isDefault: true },
+      { id: "1-2", name: "فانيليا - 1kg", sku: "WHEY-VA-1", price: 14900, stock: 8, attributes: { flavor: "فانيليا", size: "1kg" }, isDefault: false },
+      { id: "1-3", name: "شوكولاتة - 2kg", sku: "WHEY-CH-2", price: 26900, compareAtPrice: 29500, stock: 5, attributes: { flavor: "شوكولاتة", size: "2kg" }, isDefault: false },
+    ],
+    reviews: [
+      { id: "r1", userName: "أحمد م.", rating: 5, comment: "ممتاز، الطعم رهيب والنتائج سريعة!" },
+      { id: "r2", userName: "سارة خ.", rating: 4, comment: "جيد جداً لكن السعر مرتفع قليلاً" },
+    ],
+  },
+  {
+    id: "2",
+    name: "Creatine Monohydrate 300g",
+    slug: "creatine-mono-300",
+    description: "كرياتين نقي 100% لزيادة القوة والتحمل. يزيد من حجم العضلات وقوتها خلال أسابيع.",
+    shortDesc: "300g - 60 جرعة",
+    goal: "MUSCLE_GAIN",
+    brand: "MyProtein",
+    images: ["/images/products/creatine-300.jpg", "/images/products/product-creatine-300-scoop.jpg", "/images/products/product-creatine-300-third.jpg"],
+    isFeatured: true,
+    isSubscription: true,
+    subscriptionDiscount: 10,
+    rating: 4.9,
+    reviewCount: 189,
+    categorySlug: "creatine",
+    nutrition: { servingSize: "5g", servings: "60", calories: 0, protein: "0g", carbs: "0g", fat: "0g", sugar: "0g" },
+    ingredients: "Creatine Monohydrate 100% - بدون إضافات",
+    usage: "5g يومياً مع ماء أو عصير، بعد التمرين أو في أي وقت.",
+    variants: [
+      { id: "2-1", name: "بدون نكهة - 300g", sku: "CREA-300", price: 6500, stock: 20, attributes: { flavor: "بدون", size: "300g" }, isDefault: true },
+      { id: "2-2", name: "بدون نكهة - 500g", sku: "CREA-500", price: 9500, compareAtPrice: 11000, stock: 15, attributes: { flavor: "بدون", size: "500g" }, isDefault: false },
+    ],
+    reviews: [{ id: "r3", userName: "محمد ع.", rating: 5, comment: "فرق واضح في القوة بعد أسبوعين" }],
+  },
+  {
+    id: "3",
+    name: "Pre-Workout Explosive",
+    slug: "pre-workout-explosive",
+    description: "طاقة انفجارية قبل التمرين، تركيز عالي وضخ دم ممتاز.",
+    shortDesc: "30 جرعة - كافيين 300mg",
+    goal: "ENERGY",
+    brand: "C4",
+    images: ["/images/products/product-preworkout-front.avif", "/images/products/product-preworkout-shaker.jpg"],
+    isFeatured: true,
+    isSubscription: false,
+    subscriptionDiscount: 0,
+    rating: 4.6,
+    reviewCount: 98,
+    categorySlug: "pre-workout",
+    nutrition: { servingSize: "10g", servings: "30", calories: 10, protein: "0g", carbs: "2g", fat: "0g", sugar: "0g" },
+    ingredients: "Caffeine 300mg, Beta-Alanine, Creatine, Citrulline",
+    usage: "سكوب واحد قبل التمرين بـ 20 دقيقة. لا تتجاوز سكوب واحد يومياً.",
+    variants: [
+      { id: "3-1", name: "توت أزرق - 300g", sku: "PRE-BLUE", price: 8500, stock: 10, attributes: { flavor: "توت أزرق", size: "300g" }, isDefault: true },
+      { id: "3-2", name: "بطيخ - 300g", sku: "PRE-WATER", price: 8500, stock: 0, attributes: { flavor: "بطيخ", size: "300g" }, isDefault: false },
+    ],
+    reviews: [],
+  },
+  {
+    id: "4",
+    name: "Omega 3 Fish Oil",
+    slug: "omega3-fish-oil",
+    description: "أوميجا 3 نقي لدعم القلب والمفاصل والدماغ. 1000mg لكل كبسولة.",
+    shortDesc: "90 كبسولة",
+    goal: "GENERAL",
+    brand: "Now Foods",
+    images: ["/images/products/product-omega3-bottle.jpg", "/images/products/product-omega3-capsules.jpg"],
+    isFeatured: false,
+    isSubscription: true,
+    subscriptionDiscount: 12,
+    rating: 4.7,
+    reviewCount: 76,
+    categorySlug: "vitamins",
+    variants: [{ id: "4-1", name: "90 كبسولة", sku: "OM90", price: 4500, stock: 30, attributes: { size: "90 كبسولة" }, isDefault: true }],
+    reviews: [],
+  },
+  {
+    id: "5",
+    name: "L-Carnitine 1500",
+    slug: "l-carnitine-1500",
+    description: "حارق دهون فعال يحول الدهون إلى طاقة. مثالي مع الكارديو.",
+    shortDesc: "30 جرعة - 1500mg",
+    goal: "WEIGHT_LOSS",
+    brand: "Nutrex",
+    images: ["/images/products/l-carnitine.jpg"],
+    isFeatured: false,
+    isSubscription: false,
+    subscriptionDiscount: 0,
+    rating: 4.3,
+    reviewCount: 42,
+    categorySlug: "fat-burner",
+    variants: [{ id: "5-1", name: "فراولة - 500ml", sku: "CARN-ST", price: 7200, stock: 7, attributes: { flavor: "فراولة", size: "500ml" }, isDefault: true }],
+    reviews: [],
+  },
+  {
+    id: "6",
+    name: "Mass Gainer 5kg",
+    slug: "mass-gainer-5kg",
+    description: "لزيادة الوزن والضخامة، 50g بروتين و 250g كارب لكل جرعة.",
+    shortDesc: "5kg - 16 جرعة",
+    goal: "MUSCLE_GAIN",
+    brand: "Serious Mass",
+    images: ["/images/products/mass-gainer.jpg"],
+    isFeatured: true,
+    isSubscription: false,
+    subscriptionDiscount: 0,
+    rating: 4.5,
+    reviewCount: 112,
+    categorySlug: "protein",
+    variants: [{ id: "6-1", name: "شوكولاتة - 5kg", sku: "MASS-CH5", price: 19500, compareAtPrice: 22000, stock: 4, attributes: { flavor: "شوكولاتة", size: "5kg" }, isDefault: true }],
+    reviews: [],
+  },
+  {
+    id: "7",
+    name: "Electrolyte Tablets",
+    slug: "electrolyte-tablets",
+    description: "أقراص إلكتروليت للترطيب وتعويض الأملاح أثناء وبعد التمرين.",
+    shortDesc: "ترطيب • أملاح معدنية",
+    goal: "GENERAL",
+    brand: "Protein Paradise",
+    images: ["/images/products/product-electrolyte-tablets-front.jpg", "/images/products/product-electrolyte-tablets-second.avif"],
+    isFeatured: false,
+    isSubscription: false,
+    subscriptionDiscount: 0,
+    rating: 5.0,
+    reviewCount: 0,
+    categorySlug: "vitamins",
+    ingredients: "Electrolytes, Sodium, Potassium, Magnesium",
+    usage: "قرص واحد في 500ml ماء أثناء التمرين.",
+    variants: [
+      { id: "7-1", name: "علبة", sku: "ELEC-TAB", price: 4800, stock: 15, attributes: { size: "box" }, isDefault: true },
+    ],
+    reviews: [],
+  },
+  {
+    id: "8",
+    name: "Magnesium Glycinate Gummies",
+    slug: "magnesium-gummies",
+    description: "مغنيزيوم غليسينات على شكل علكات لنوم أفضل واستشفاء عضلي.",
+    shortDesc: "نوم • استشفاء",
+    goal: "GENERAL",
+    brand: "Protein Paradise",
+    images: ["/images/products/product-magnesium-gummies-front.avif", "/images/products/product-magnesium-gummies-second.avif"],
+    isFeatured: false,
+    isSubscription: true,
+    subscriptionDiscount: 10,
+    rating: 5.0,
+    reviewCount: 0,
+    categorySlug: "vitamins",
+    ingredients: "Magnesium Glycinate, Natural flavors",
+    usage: "علكتان قبل النوم.",
+    variants: [
+      { id: "8-1", name: "علبة", sku: "MAG-GUM", price: 5200, stock: 15, attributes: { size: "box" }, isDefault: true },
+    ],
+    reviews: [],
+  },
+  {
+    id: "9",
+    name: "Metal Shaker",
+    slug: "metal-shaker",
+    description: "شيكر معدني فاخر بخلط مثالي، يحافظ على برودة مشروبك.",
+    shortDesc: "معدن • 750ml",
+    goal: "GENERAL",
+    brand: "Protein Paradise",
+    images: ["/images/accessories/metal-shaker-01.png", "/images/accessories/metal-shaker-02.png"],
+    isFeatured: false,
+    isSubscription: false,
+    subscriptionDiscount: 0,
+    rating: 4.9,
+    reviewCount: 0,
+    categorySlug: "accessories",
+    variants: [
+      { id: "9-1", name: "أسود", sku: "SHK-MET", price: 1200, stock: 25, attributes: { color: "black" }, isDefault: true },
+    ],
+    reviews: [],
+  },
+  {
+    id: "10",
+    name: "Training Gloves",
+    slug: "training-gloves",
+    description: "قفازات تدريب بقبضة قوية وحماية للمعصم.",
+    shortDesc: "قبضة • حماية",
+    goal: "GENERAL",
+    brand: "Protein Paradise",
+    images: ["/images/accessories/training-gloves-01.avif", "/images/accessories/training-gloves-02.avif"],
+    isFeatured: false,
+    isSubscription: false,
+    subscriptionDiscount: 0,
+    rating: 4.8,
+    reviewCount: 0,
+    categorySlug: "accessories",
+    variants: [
+      { id: "10-1", name: "مقاس موحد", sku: "GLV-TR", price: 2800, stock: 20, attributes: { size: "one-size" }, isDefault: true },
+    ],
+    reviews: [],
+  },
+  {
+    id: "11",
+    name: "Flip Bottle",
+    slug: "flip-bottle",
+    description: "قارورة رياضية بغطاء سريع، مثالية للترطيب اليومي.",
+    shortDesc: "1L • غطاء سريع",
+    goal: "GENERAL",
+    brand: "Protein Paradise",
+    images: ["/images/accessories/flip-bottle-01.avif", "/images/accessories/flip-bottle-02.avif"],
+    isFeatured: false,
+    isSubscription: false,
+    subscriptionDiscount: 0,
+    rating: 4.8,
+    reviewCount: 0,
+    categorySlug: "accessories",
+    variants: [
+      { id: "11-1", name: "1L", sku: "BTL-FLIP", price: 1500, stock: 30, attributes: { size: "1L" }, isDefault: true },
+    ],
+    reviews: [],
+  },
+  {
+    id: "12",
+    name: "Training Socks",
+    slug: "training-socks",
+    description: "جوارب تدريب مريحة بتهوية عالية ودعم للقوس.",
+    shortDesc: "قطن • تهوية",
+    goal: "GENERAL",
+    brand: "Protein Paradise",
+    images: ["/images/accessories/training-socks-01.avif", "/images/accessories/training-socks-02.avif"],
+    isFeatured: false,
+    isSubscription: false,
+    subscriptionDiscount: 0,
+    rating: 4.7,
+    reviewCount: 0,
+    categorySlug: "accessories",
+    variants: [
+      { id: "12-1", name: "مقاس موحد", sku: "SCK-TR", price: 900, stock: 40, attributes: { size: "one-size" }, isDefault: true },
+    ],
+    reviews: [],
+  },
+  {
+    id: "13",
+    name: "Multivitamine",
+    slug: "multivitamine",
+    description: "مالتي فيتامين يومي شامل لدعم الطاقة والمناعة والصحة العامة.",
+    shortDesc: "فيتامينات + معادن",
+    goal: "GENERAL",
+    brand: "Protein Paradise",
+    images: ["/images/products/product-multivitamine-01.avif", "/images/products/product-multivitamine-02.avif"],
+    isFeatured: true,
+    isSubscription: true,
+    subscriptionDiscount: 10,
+    rating: 5.0,
+    reviewCount: 0,
+    categorySlug: "vitamins",
+    ingredients: "Vitamins A, C, D, E, B-complex, Zinc, Magnesium",
+    usage: "كبسولة واحدة يومياً مع وجبة.",
+    variants: [
+      { id: "13-1", name: "علبة", sku: "MULTI-01", price: 3900, stock: 20, attributes: { size: "box" }, isDefault: true },
+    ],
+    reviews: [],
+  },
+  {
+    id: "14",
+    name: "Protein Barres",
+    slug: "protein-barres",
+    description: "بارات بروتين لذيذة وغنية بالبروتين، سناك مثالي بعد التمرين.",
+    shortDesc: "سناك بروتين",
+    goal: "MUSCLE_GAIN",
+    brand: "Protein Paradise",
+    images: ["/images/products/product-protein-barres-01.avif", "/images/products/product-protein-barres-02.avif"],
+    isFeatured: true,
+    isSubscription: false,
+    subscriptionDiscount: 0,
+    rating: 5.0,
+    reviewCount: 0,
+    categorySlug: "protein",
+    ingredients: "Whey protein, Cocoa, Nuts",
+    usage: "بار واحد كسناك بعد التمرين.",
+    variants: [
+      { id: "14-1", name: "علبة", sku: "BAR-PROT", price: 3600, stock: 20, attributes: { size: "box" }, isDefault: true },
+    ],
+    reviews: [],
+  },
+]
+
+async function main() {
+  console.log("Seeding Neon DB...")
+
+  // FK-safe wipe sequence
+  await prisma.review.deleteMany()
+  await prisma.productVariant.deleteMany()
+  await prisma.product.deleteMany()
+  await prisma.category.deleteMany()
+  await prisma.promo.deleteMany()
+  await prisma.order.deleteMany()
+  await prisma.adminUser.deleteMany()
+
+  for (const c of categories) {
+    await prisma.category.create({ data: { id: c.id, name: c.name, slug: c.slug, image: c.image } })
+  }
+  console.log(`✅ Categories: ${categories.length}`)
+
+  for (const p of products) {
+    const cat = await prisma.category.findUnique({ where: { slug: p.categorySlug } })
+    if (!cat) throw new Error(`Category not found ${p.categorySlug}`)
+    const created = await prisma.product.create({
+      data: {
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        description: p.description,
+        shortDesc: p.shortDesc,
+        goal: p.goal,
+        brand: p.brand,
+        images: JSON.stringify(p.images),
+        isFeatured: p.isFeatured,
+        isSubscription: p.isSubscription,
+        subscriptionDiscount: p.subscriptionDiscount,
+        rating: p.rating,
+        reviewCount: p.reviewCount,
+        categoryId: cat.id,
+        nutrition: p.nutrition ? JSON.stringify(p.nutrition) : null,
+        ingredients: p.ingredients || null,
+        usage: p.usage || null,
+      },
+    })
+    for (const v of p.variants) {
+      await prisma.productVariant.create({
+        data: {
+          id: v.id,
+          productId: created.id,
+          name: v.name,
+          sku: v.sku,
+          price: v.price,
+          compareAtPrice: v.compareAtPrice ?? null,
+          stock: v.stock,
+          attributes: JSON.stringify(v.attributes),
+          isDefault: v.isDefault,
+        },
+      })
+    }
+    for (const r of p.reviews || []) {
+      await prisma.review.create({
+        data: { id: r.id, productId: created.id, userName: r.userName, rating: r.rating, comment: r.comment },
+      })
+    }
+  }
+  console.log(`✅ Products: ${products.length}`)
+
+  // promos
+  await prisma.promo.createMany({
+    data: [
+      { code: "FIT10", discount: 10, expiry: new Date("2026-12-31"), active: true, uses: 0 },
+      { code: "RAMADAN15", discount: 15, expiry: new Date("2026-03-15"), active: false, uses: 89 },
+      { code: "WELCOME15", discount: 15, expiry: new Date("2027-01-01"), active: true, uses: 0 },
+    ],
+  })
+  console.log("✅ Promos: 3")
+
+  // admin seed
+  const hash = await bcrypt.hash("password123", 10)
+  await prisma.adminUser.create({ data: { username: "username1234", passwordHash: hash } })
+  console.log("✅ Admin: username1234 / password123")
+
+  console.log("🌱 Seed complete")
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

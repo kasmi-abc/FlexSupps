@@ -1,0 +1,264 @@
+// Neon PostgreSQL schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Goal {
+  MUSCLE_GAIN
+  WEIGHT_LOSS
+  ENERGY
+  RECOVERY
+  GENERAL
+}
+
+enum OrderStatus {
+  pending
+  shipped
+  delivered
+  cancelled
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  image       String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+}
+
+model Product {
+  id                   String           @id @default(cuid())
+  name                 String
+  slug                 String           @unique
+  description          String
+  shortDesc            String?
+  goal                 Goal?
+  brand                String
+  images               String // JSON array string
+  isFeatured           Boolean          @default(false)
+  isSubscription       Boolean          @default(false)
+  subscriptionDiscount Int              @default(10)
+  rating               Float            @default(0)
+  reviewCount          Int              @default(0)
+  categoryId           String
+  category             Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  variants             ProductVariant[]
+  reviews              Review[]
+  nutrition            String? // JSON: NutritionFacts
+  ingredients          String?
+  usage                String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([categoryId])
+  @@index([slug])
+  @@index([isFeatured])
+  @@index([brand])
+}
+
+model ProductVariant {
+  id             String  @id @default(cuid())
+  productId      String
+  product        Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name           String
+  sku            String  @unique
+  price          Float
+  compareAtPrice Float?
+  stock          Int      @default(0)
+  costPrice      Float    @default(0)
+  image          String?
+  attributes     String // JSON: { flavor, size }
+  isDefault      Boolean @default(false)
+  batches        Batch[]
+
+  @@index([productId])
+  @@index([sku])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userName  String
+  rating    Int
+  comment   String
+  approved  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([approved])
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  tracking     String      @unique
+  customerName String
+  phone        String
+  wilaya       String?
+  address      String?
+  email        String?
+  shipper      String?
+  shipmentRef  String?
+  items        String // JSON array of cart items
+  subtotal     Float
+  discount     Float       @default(0)
+  promoCode    String?
+  shipping     Float       @default(0)
+  total        Float
+  status       OrderStatus @default(pending)
+  stockDeducted Boolean    @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([tracking])
+  @@index([phone])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RateLimit {
+  key       String   @id
+  count     Int      @default(1)
+  resetAt   DateTime
+
+  @@index([resetAt])
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  kind      String   // error | audit | info
+  source    String
+  message   String
+  meta      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([kind])
+  @@index([read])
+  @@index([createdAt])
+}
+
+model Batch {
+  id        String   @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  lot       String
+  expiry    DateTime
+  qty       Int      @default(0)
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([variantId])
+  @@index([expiry])
+}
+
+model ReturnRequest {
+  id        String   @id @default(cuid())
+  tracking  String
+  orderId   String?
+  name      String   @default("")
+  phone     String   @default("")
+  reason    String
+  details   String?
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+
+  @@index([tracking])
+  @@index([status])
+}
+
+model LoyaltyAccount {
+  phone     String   @id
+  name      String   @default("")
+  points    Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@index([points])
+}
+
+model AbandonedCart {
+  id        String   @id @default(cuid())
+  sessionId String
+  phone     String?
+  items     String
+  total     Float    @default(0)
+  reminded  Boolean  @default(false)
+  ordered   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phone])
+  @@index([ordered])
+  @@index([createdAt])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  titleFr   String
+  titleAr   String
+  excerptFr String   @default("")
+  excerptAr String   @default("")
+  contentFr String
+  contentAr String
+  category  String   @default("")
+  image     String   @default("")
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([published])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  subject   String   @default("")
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([read])
+  @@index([createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model Promo {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  discount  Int
+  expiry    DateTime
+  active    Boolean  @default(true)
+  uses      Int      @default(0)
+  maxUses   Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([active])
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  totpSecret   String?
+  totpEnabled  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([username])
+}
